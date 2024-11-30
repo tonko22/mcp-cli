@@ -1,18 +1,18 @@
-# send_ping.py
+# send_prompts_list.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
 
-async def send_ping(
+
+async def send_prompts_list(
     read_stream: MemoryObjectReceiveStream,
     write_stream: MemoryObjectSendStream,
-) -> bool:
-    """ Send a ping message to the server and log the response. """
+) -> list:
+    """Send a 'prompts/list' message and return the list of prompts."""
     response = await send_message(
         read_stream=read_stream,
         write_stream=write_stream,
-        method="ping",
-        message_id="ping-1",
+        method="prompts/list",
     )
 
-    # return the response
-    return response is not None
+    # return the result
+    return response.get("result", [])

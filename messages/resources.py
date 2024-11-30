@@ -1,18 +1,18 @@
-# send_ping.py
+# send_resources_list.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
 
-async def send_ping(
+
+async def send_resources_list(
     read_stream: MemoryObjectReceiveStream,
     write_stream: MemoryObjectSendStream,
-) -> bool:
-    """ Send a ping message to the server and log the response. """
+) -> list:
+    """Send a 'resources/list' message and return the list of resources."""
     response = await send_message(
         read_stream=read_stream,
         write_stream=write_stream,
-        method="ping",
-        message_id="ping-1",
+        method="resources/list",
     )
 
-    # return the response
-    return response is not None
+    # return the result
+    return response.get("result", [])
