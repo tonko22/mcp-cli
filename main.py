@@ -7,6 +7,9 @@ from messages.send_ping_message import send_ping
 from stdio_client import stdio_client, get_default_environment
 from stdio_server_shutdown import shutdown_stdio_server
 
+# Default path for the configuration file
+DEFAULT_CONFIG_FILE = "server_config.json"
+
 async def main(config_path: str, server_name: str) -> None:
     """ Main function to manage server initialization, communication, and shutdown. """
     process = None
@@ -76,7 +79,7 @@ if __name__ == "__main__":
     # get the config
     parser.add_argument(
         "--config-file",
-        required=True,
+        default=DEFAULT_CONFIG_FILE,
         help="Path to the JSON configuration file containing server details.",
     )
 

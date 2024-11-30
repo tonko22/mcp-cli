@@ -29,20 +29,27 @@ async def shutdown_stdio_server(
     logging.info("Initiating stdio server shutdown")
 
     try:
-        # Step 1: Close the write stream (stdin for the server)
-        if process.stdin:
-            await process.stdin.aclose()
-            logging.info("Closed stdin stream")
+        # ensure we have a process
+        if process:
+            # Step 1: Close the write stream (stdin for the server)
+            if process.stdin:
+                # close
+                await process.stdin.aclose()
+                logging.info("Closed stdin stream")
 
-        # Step 2: Wait for the process to terminate gracefully
-        with anyio.fail_after(timeout):
-            await process.wait()
-            logging.info("Process exited normally")
-            return
+            # Step 2: Wait for the process to terminate gracefully
+            with anyio.fail_after(timeout):
+                await process.wait()
+                logging.info("Process exited normally")
+                return
 
     except TimeoutError:
         logging.warning(f"Server did not exit within {timeout} seconds, sending SIGTERM")
-        process.terminate()
+
+        # ensure we have a process
+        if process:
+            # terminate
+            process.terminate()
 
         try:
             # Step 3: Wait for the process to terminate after SIGTERM
@@ -52,18 +59,27 @@ async def shutdown_stdio_server(
                 return
         except TimeoutError:
             logging.warning("Server did not respond to SIGTERM, sending SIGKILL")
-            process.kill()
 
-            # Step 4: Wait for the process to terminate after SIGKILL
-            await process.wait()
-            logging.info("Process exited after SIGKILL")
+            # ensure we have a process
+            if process:
+                # kill
+                process.kill()
+
+                # Step 4: Wait for the process to terminate after SIGKILL
+                await process.wait()
+                logging.info("Process exited after SIGKILL")
 
     except Exception as e:
         # Catch unexpected errors during shutdown
         logging.error(f"Unexpected error during stdio server shutdown: {e}")
-        process.kill()
-        await process.wait()
-        logging.info("Process forcibly terminated")
 
+        if process:
+            # kill
+            process.kill()
+
+            # wait
+            await process.wait()
+            logging.info("Process forcibly terminated")
     finally:
+        # complete
         logging.info("Stdio server shutdown complete")
