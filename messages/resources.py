@@ -1,7 +1,6 @@
-# send_resources_list.py
+# resources.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
-
 
 async def send_resources_list(
     read_stream: MemoryObjectReceiveStream,

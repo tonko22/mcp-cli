@@ -112,4 +112,6 @@ async def send_initialize(
 
     # timeout
     logging.error("Initialization response timeout")
+
+    # return none
     return None

@@ -1,4 +1,4 @@
-# send_resources_list.py
+# tools.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
 

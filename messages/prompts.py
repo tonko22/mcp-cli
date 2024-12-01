@@ -1,7 +1,6 @@
-# send_prompts_list.py
+# prompts.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
-
 
 async def send_prompts_list(
     read_stream: MemoryObjectReceiveStream,

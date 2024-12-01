@@ -52,11 +52,15 @@ async def send_message(
                         raise response
 
         except TimeoutError:
+            # timeout
             logging.error(f"Timeout waiting for response to method '{method}' (Attempt {attempt}/{retries})")
             if attempt == retries:
                 raise
         except Exception as e:
+            # exception
             logging.error(f"Unexpected error during '{method}' request: {e} (Attempt {attempt}/{retries})")
             if attempt == retries:
                 raise
-        await anyio.sleep(2)  # Delay before retrying
+        
+        # Delay before retrying
+        await anyio.sleep(2)  
