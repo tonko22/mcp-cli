@@ -5,7 +5,7 @@ import anyio
 import asyncio
 import os
 from config import load_config
-from messages.tools import send_tools_list
+from messages.tools import call_tool, send_tools_list
 from messages.resources import send_resources_list
 from messages.prompts import send_prompts_list
 from messages.send_initialize_message import send_initialize
@@ -28,6 +28,25 @@ async def handle_command(command: str, read_stream, write_stream):
             print("\nFetching Tools List...")
             tools = await send_tools_list(read_stream, write_stream)
             print("Tools List:", tools)
+        elif command == "call-tool":
+            tool_name = input("Enter tool name: ").strip()
+            if not tool_name:
+                print("Tool name cannot be empty.")
+                return True
+
+            arguments_str = input("Enter tool arguments as JSON (e.g., {'key': 'value'}): ").strip()
+            try:
+                arguments = eval(arguments_str)  # Convert string to dict
+            except Exception as e:
+                print(f"Invalid arguments format: {e}")
+                return True
+
+            print(f"\nCalling tool '{tool_name}' with arguments: {arguments}")
+            result = await call_tool(tool_name, arguments, read_stream, write_stream)
+            if result.get("isError"):
+                print(f"Error calling tool: {result.get('error')}")
+            else:
+                print("Tool Response:", result.get("content"))
         elif command == "list-resources":
             print("\nFetching Resources List...")
             resources = await send_resources_list(read_stream, write_stream)
