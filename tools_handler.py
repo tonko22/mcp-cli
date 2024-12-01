@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import Optional, Dict, Any
 from messages.tools import send_call_tool, send_tools_list
@@ -17,7 +18,8 @@ def parse_tool_response(response: str) -> Optional[Dict[str, Any]]:
                 "arguments": args,
             }
         except json.JSONDecodeError as error:
-            print(f"Error parsing function arguments: {error}")
+            # json decode error
+            logging.debug(f"Error parsing function arguments: {error}")
     return None
 
 async def handle_tool_call(tool_call, conversation_history, read_stream, write_stream):
@@ -31,8 +33,11 @@ async def handle_tool_call(tool_call, conversation_history, read_stream, write_s
         last_message = conversation_history[-1]["content"]
         parsed_tool = parse_tool_response(last_message)
         if not parsed_tool:
-            print("Unable to parse tool call from message")
+            # unable to parse
+            logging.debug("Unable to parse tool call from message")
             return
+        
+        # get the tool name and arguments
         tool_name = parsed_tool["function"]
         raw_arguments = parsed_tool["arguments"]
 
@@ -40,20 +45,23 @@ async def handle_tool_call(tool_call, conversation_history, read_stream, write_s
         # Parse the tool arguments
         tool_args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
     except json.JSONDecodeError:
-        print(f"Error decoding arguments for tool '{tool_name}': {raw_arguments}")
+        # json error
+        logging.debug(f"Error decoding arguments for tool '{tool_name}': {raw_arguments}")
         return
+    
+    # print the tool invocation
+    print(f"\nTool: '{tool_name}' invoked with arguments: {tool_args}")
 
-    print(f"\nTool '{tool_name}' invoked with arguments: {tool_args}")
-
-    # Execute the tool
+    # execute the tool
     tool_response = await send_call_tool(tool_name, tool_args, read_stream, write_stream)
     if tool_response.get("isError"):
-        print(f"Error calling tool: {tool_response.get('error')}")
+        # error
+        logging.debug(f"Error calling tool: {tool_response.get('error')}")
         return
 
     # Format and display the response
     formatted_response = format_tool_response(tool_response.get("content", []))
-    print(f"Tool '{tool_name}' Response:", formatted_response)
+    logging.debug(f"Tool '{tool_name}' Response:", formatted_response)
 
     # Add the tool response to the conversation history
     conversation_history.append(
@@ -66,18 +74,25 @@ def format_tool_response(response_content):
         return "\n".join(
             item.get("text", "No content") for item in response_content if item.get("type") == "text"
         )
+    
+    # return the formatted tool response
     return str(response_content)
 
 async def fetch_tools(read_stream, write_stream):
     """Fetch tools from the server."""
-    print("\nFetching tools for chat mode...")
+    logging.debug("\nFetching tools for chat mode...")
 
     # get the tools list
     tools_response = await send_tools_list(read_stream, write_stream)
     tools = tools_response.get("tools", [])
+
+    # check the tools are valid
     if not isinstance(tools, list) or not all(isinstance(tool, dict) for tool in tools):
-        print("Invalid tools format received.")
+        # invalid tools
+        logging.debug("Invalid tools format received.")
         return None
+    
+    # return the tools
     return tools
 
 def convert_to_openai_tools(tools):

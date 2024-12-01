@@ -7,9 +7,6 @@ import logging
 # Load environment variables
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
-
-
 class LLMClient:
     def __init__(self, provider="openai", model="gpt-4o-mini", api_key=None):
         """

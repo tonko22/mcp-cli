@@ -56,9 +56,6 @@ async def send_initialize(
         params=init_params.model_dump(),
     )
 
-    # print the message
-    logging.debug("sending message: {init_message}")
-
     # sending
     logging.debug("Sending initialize request")
     await write_stream.send(init_message)

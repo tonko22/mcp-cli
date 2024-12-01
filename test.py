@@ -1,9 +1,18 @@
 import anyio
+import logging
+import sys
 from config import load_config
 from messages.send_initialize_message import send_initialize
 from messages.ping import send_ping
 from messages.tools import send_tools_list
 from transport.stdio.stdio_client import stdio_client
+
+# Configure logging
+logging.basicConfig(
+    level=logging.CRITICAL,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
 
 async def main():
     """Stripped-down script to initialize the server and send a ping."""
@@ -23,6 +32,9 @@ async def main():
         if not init_result:
             print("Server initialization failed")
             return
+        
+        # connected
+        print(f"We're connected!!!")
 
         # # Send a ping
         # result = await send_ping(read_stream, write_stream)
