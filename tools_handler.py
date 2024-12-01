@@ -1,61 +1,64 @@
 import json
+import re
+from typing import Optional, Dict, Any
 from messages.tools import call_tool, send_tools_list
 
-import json
+def parse_tool_response(response: str) -> Optional[Dict[str, Any]]:
+    """Parse tool call from Llama's XML-style format."""
+    function_regex = r"<function=(\w+)>(.*?)</function>"
+    match = re.search(function_regex, response)
+    
+    if match:
+        function_name, args_string = match.groups()
+        try:
+            args = json.loads(args_string)
+            return {
+                "function": function_name,
+                "arguments": args,
+            }
+        except json.JSONDecodeError as error:
+            print(f"Error parsing function arguments: {error}")
+    return None
 
 async def handle_tool_call(tool_call, conversation_history, read_stream, write_stream):
-    """Handle a single tool call."""
-    # Validate tool call structure
-    if not hasattr(tool_call, "function") or not hasattr(tool_call.function, "name"):
-        print("Invalid tool call: Missing function or name.")
-        conversation_history.append(
-            {"role": "assistant", "content": "Error: Invalid tool call structure."}
-        )
-        return
+    """Handle a single tool call for both OpenAI and Llama formats."""
+    # Handle direct OpenAI-style tool calls
+    if hasattr(tool_call, 'function'):
+        tool_name = tool_call.function.name
+        raw_arguments = tool_call.function.arguments
+    else:
+        # Parse Llama's XML format from the last message
+        last_message = conversation_history[-1]["content"]
+        parsed_tool = parse_tool_response(last_message)
+        if not parsed_tool:
+            print("Unable to parse tool call from message")
+            return
+        tool_name = parsed_tool["function"]
+        raw_arguments = parsed_tool["arguments"]
 
-    tool_name = tool_call.function.name
-    raw_arguments = getattr(tool_call.function, "arguments", "{}")
-
-    # Parse tool arguments
     try:
-        tool_args = json.loads(raw_arguments) if raw_arguments else {}
+        # Parse the tool arguments
+        tool_args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
     except json.JSONDecodeError:
-        error_message = f"Error decoding arguments for tool '{tool_name}': {raw_arguments}"
-        print(error_message)
-        conversation_history.append({"role": "assistant", "content": error_message})
+        print(f"Error decoding arguments for tool '{tool_name}': {raw_arguments}")
         return
 
     print(f"\nTool '{tool_name}' invoked with arguments: {tool_args}")
 
     # Execute the tool
-    try:
-        tool_response = await call_tool(tool_name, tool_args, read_stream, write_stream)
-    except Exception as e:
-        error_message = f"Error executing tool '{tool_name}': {str(e)}"
-        print(error_message)
-        conversation_history.append({"role": "assistant", "content": error_message})
-        return
-
+    tool_response = await call_tool(tool_name, tool_args, read_stream, write_stream)
     if tool_response.get("isError"):
-        error_message = f"Error calling tool '{tool_name}': {tool_response.get('error')}"
-        print(error_message)
-        conversation_history.append({"role": "assistant", "content": error_message})
+        print(f"Error calling tool: {tool_response.get('error')}")
         return
 
     # Format and display the response
-    try:
-        formatted_response = format_tool_response(tool_response.get("content", []))
-    except Exception as e:
-        formatted_response = f"Error formatting tool response: {str(e)}"
-        print(formatted_response)
-
+    formatted_response = format_tool_response(tool_response.get("content", []))
     print(f"Tool '{tool_name}' Response:", formatted_response)
 
     # Add the tool response to the conversation history
     conversation_history.append(
         {"role": "assistant", "content": f"Tool '{tool_name}' Response: {formatted_response}"}
     )
-
 
 def format_tool_response(response_content):
     """Format the response content from a tool."""

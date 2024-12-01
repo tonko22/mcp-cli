@@ -2,9 +2,13 @@ import os
 import ollama
 from openai import OpenAI
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+
 
 class LLMClient:
     def __init__(self, provider="openai", model="gpt-4o-mini", api_key=None):
@@ -18,12 +22,21 @@ class LLMClient:
         self.provider = provider
         self.model = model
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self._tools = []
 
         if provider == "openai" and not self.api_key:
             raise ValueError("The OPENAI_API_KEY environment variable is not set.")
 
         if provider == "ollama" and not hasattr(ollama, "chat"):
             raise ValueError("Ollama is not properly configured in this environment.")
+
+    def register_tool(self, tool):
+        """
+        Register a Python function as a tool.
+
+        :param tool: A callable Python function.
+        """
+        self._tools.append(tool)
 
     def create_completion(self, messages, tools=None):
         """
@@ -36,43 +49,50 @@ class LLMClient:
         if self.provider == "openai":
             return self._openai_completion(messages, tools)
         elif self.provider == "ollama":
-            return self._ollama_completion(messages, tools)
+            return self._ollama_completion(messages, tools or self._tools)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
     def _openai_completion(self, messages, tools):
         """Handle OpenAI chat completions."""
         client = OpenAI(api_key=self.api_key)
-        response = client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            tools=tools or [],
-        )
-        # Normalize OpenAI response for consistency
-        return {
-            "response": response.choices[0].message.content,
-            "tool_calls": getattr(response.choices[0].message, "tool_calls", []),
-        }
+        try:
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=tools or [],
+            )
+            return {
+                "response": response.choices[0].message.content,
+                "tool_calls": getattr(response.choices[0].message, "tool_calls", []),
+            }
+        except Exception as e:
+            logging.error(f"OpenAI API Error: {str(e)}")
+            raise ValueError(f"OpenAI API Error: {str(e)}")
 
     def _ollama_completion(self, messages, tools):
         """Handle Ollama chat completions."""
         ollama_messages = [
             {"role": msg["role"], "content": msg["content"]} for msg in messages
         ]
-        response = ollama.chat(
-            "llama3.1",
-            messages=ollama_messages,
-            tools=tools,  # Pass tools to enable tool support
-        )
+        try:
+            response = ollama.chat(
+                model="llama3.1",
+                messages=ollama_messages,
+                tools=tools or [],
+            )
 
-        # Debugging: Log the raw Ollama response
-        print(f"Ollama raw response: {response}")
+            logging.info(f"Ollama raw response: {response}")
 
-        # Normalize Ollama response for consistency
-        if hasattr(response, "message") and response.message:
+            message = getattr(response, "message", None)
             tool_calls = getattr(response, "tool_calls", [])
-            return {"response": response.message.content, "tool_calls": tool_calls}
-        elif hasattr(response, "error"):
-            raise ValueError(f"Ollama API Error: {response.error}")
-        else:
-            return {"response": "No response", "tool_calls": []}
+            if message:
+                return {"response": message.content, "tool_calls": tool_calls}
+            elif hasattr(response, "error"):
+                logging.error(f"Ollama API Error: {response.error}")
+                raise ValueError(f"Ollama API Error: {response.error}")
+            else:
+                return {"response": "No response", "tool_calls": []}
+        except Exception as e:
+            logging.error(f"Ollama API Error: {str(e)}")
+            raise ValueError(f"Ollama API Error: {str(e)}")
