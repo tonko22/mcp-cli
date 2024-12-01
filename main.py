@@ -56,7 +56,9 @@ async def handle_command(command: str, read_stream, write_stream):
             prompts = await send_prompts_list(read_stream, write_stream)
             print("Prompts List:", prompts)
         elif command == "chat":
-            await handle_chat_mode(read_stream, write_stream)
+            # set the provider
+            provider = os.getenv("LLM_PROVIDER", "openai")
+            await handle_chat_mode(read_stream, write_stream, provider)
         elif command in ["quit", "exit"]:
             print("\nGoodbye!")
             return False

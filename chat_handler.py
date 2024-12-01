@@ -1,40 +1,28 @@
-import os
-from openai import OpenAI
-from dotenv import load_dotenv
-from system_prompt_generator import SystemPromptGenerator
+from llm_client import LLMClient
 from tools_handler import handle_tool_call, convert_to_openai_tools, fetch_tools
+from system_prompt_generator import SystemPromptGenerator
 
-# Load environment variables
-load_dotenv()
-
-# Validate API key
-if not os.getenv("OPENAI_API_KEY"):
-    raise ValueError("The OPENAI_API_KEY environment variable is not set.")
-
-async def handle_chat_mode(read_stream, write_stream):
+async def handle_chat_mode(read_stream, write_stream, provider="openai"):
     """Enter chat mode with multi-call support for autonomous tool chaining."""
     try:
-        # get the tools from the server
+        # Fetch tools dynamically
         tools = await fetch_tools(read_stream, write_stream)
 
-        # no tools
         if not tools:
             print("No tools available. Exiting chat mode.")
             return
-        
-        # generate the system prompt
+
+        # Generate system prompt
         system_prompt = generate_system_prompt(tools)
 
-        # convert tools to OpenAI format
-        openai_tools = convert_to_openai_tools(tools)
+        # Convert tools to OpenAI format (only relevant for OpenAI)
+        openai_tools = convert_to_openai_tools(tools) if provider == "openai" else None
 
-        # create the client
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # Initialize the LLM client
+        client = LLMClient(provider=provider)
 
-        # build the context
         conversation_history = [{"role": "system", "content": system_prompt}]
 
-        # enter chat mode
         print("\nEntering chat mode. Type 'exit' to quit.")
         while True:
             user_message = input("\nYou: ").strip()
@@ -42,14 +30,39 @@ async def handle_chat_mode(read_stream, write_stream):
                 print("Exiting chat mode.")
                 break
 
-            # add the item to the histroy
             conversation_history.append({"role": "user", "content": user_message})
 
-            # process conversation
+            # Process conversation
             await process_conversation(client, conversation_history, openai_tools, read_stream, write_stream)
 
     except Exception as e:
         print(f"\nError in chat mode: {e}")
+
+
+async def process_conversation(client, conversation_history, openai_tools, read_stream, write_stream):
+    """Process the conversation loop, handling tool calls and responses."""
+    while True:
+        # Call the LLM client
+        completion = client.create_completion(
+            messages=conversation_history,
+            tools=openai_tools,
+        )
+
+        response_content = completion.get("response", "No response")
+        tool_calls = completion.get("tool_calls", [])
+
+        # If tool calls are present, process them
+        if tool_calls:
+            for tool_call in tool_calls:
+                await handle_tool_call(tool_call, conversation_history, read_stream, write_stream)
+            continue  # Continue the loop to handle follow-up responses
+
+        # Otherwise, process as a regular assistant response
+        print("Assistant:", response_content)
+        conversation_history.append({"role": "assistant", "content": response_content})
+        break
+
+
 
 def generate_system_prompt(tools):
     """Generate the system prompt for the assistant."""
@@ -62,24 +75,3 @@ def generate_system_prompt(tools):
     
     # return the system prompt
     return system_prompt
-
-
-async def process_conversation(client, conversation_history, openai_tools, read_stream, write_stream):
-    """Process the conversation loop, handling tool calls and responses."""
-    while True:
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=conversation_history,
-            tools=openai_tools,
-        )
-        response_message = completion.choices[0].message
-
-        if hasattr(response_message, "tool_calls") and response_message.tool_calls:
-            print("Tool call response:", response_message.tool_calls)
-            for tool_call in response_message.tool_calls:
-                await handle_tool_call(tool_call, conversation_history, read_stream, write_stream)
-        else:
-            response_content = response_message.content
-            print("Assistant:", response_content)
-            conversation_history.append({"role": "assistant", "content": response_content})
-            break

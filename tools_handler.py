@@ -1,34 +1,61 @@
 import json
 from messages.tools import call_tool, send_tools_list
 
+import json
+
 async def handle_tool_call(tool_call, conversation_history, read_stream, write_stream):
     """Handle a single tool call."""
-    tool_name = tool_call.function.name
-    raw_arguments = tool_call.function.arguments
+    # Validate tool call structure
+    if not hasattr(tool_call, "function") or not hasattr(tool_call.function, "name"):
+        print("Invalid tool call: Missing function or name.")
+        conversation_history.append(
+            {"role": "assistant", "content": "Error: Invalid tool call structure."}
+        )
+        return
 
+    tool_name = tool_call.function.name
+    raw_arguments = getattr(tool_call.function, "arguments", "{}")
+
+    # Parse tool arguments
     try:
-        # Parse the tool arguments
         tool_args = json.loads(raw_arguments) if raw_arguments else {}
     except json.JSONDecodeError:
-        print(f"Error decoding arguments for tool '{tool_name}': {raw_arguments}")
+        error_message = f"Error decoding arguments for tool '{tool_name}': {raw_arguments}"
+        print(error_message)
+        conversation_history.append({"role": "assistant", "content": error_message})
         return
 
     print(f"\nTool '{tool_name}' invoked with arguments: {tool_args}")
 
     # Execute the tool
-    tool_response = await call_tool(tool_name, tool_args, read_stream, write_stream)
+    try:
+        tool_response = await call_tool(tool_name, tool_args, read_stream, write_stream)
+    except Exception as e:
+        error_message = f"Error executing tool '{tool_name}': {str(e)}"
+        print(error_message)
+        conversation_history.append({"role": "assistant", "content": error_message})
+        return
+
     if tool_response.get("isError"):
-        print(f"Error calling tool: {tool_response.get('error')}")
+        error_message = f"Error calling tool '{tool_name}': {tool_response.get('error')}"
+        print(error_message)
+        conversation_history.append({"role": "assistant", "content": error_message})
         return
 
     # Format and display the response
-    formatted_response = format_tool_response(tool_response.get("content", []))
+    try:
+        formatted_response = format_tool_response(tool_response.get("content", []))
+    except Exception as e:
+        formatted_response = f"Error formatting tool response: {str(e)}"
+        print(formatted_response)
+
     print(f"Tool '{tool_name}' Response:", formatted_response)
 
     # Add the tool response to the conversation history
     conversation_history.append(
         {"role": "assistant", "content": f"Tool '{tool_name}' Response: {formatted_response}"}
     )
+
 
 def format_tool_response(response_content):
     """Format the response content from a tool."""
