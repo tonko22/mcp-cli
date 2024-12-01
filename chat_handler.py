@@ -74,63 +74,74 @@ async def process_conversation(client, conversation_history, openai_tools, read_
         conversation_history.append({"role": "assistant", "content": response_content})
         break
         
-
 def generate_system_prompt(tools):
-    """Generate a comprehensive system prompt for the assistant."""
+    """
+    Generate a comprehensive system prompt for the assistant.
+
+    Args:
+        tools (list): A list of tools available for the assistant.
+
+    Returns:
+        str: A system prompt string with detailed reasoning and problem-solving instructions.
+    """
     prompt_generator = SystemPromptGenerator()
     tools_json = {"tools": tools}
 
-    # Get base prompt for tools
+    # Generate base prompt for tools
     system_prompt = prompt_generator.generate_prompt(tools_json)
 
-    # Add general reasoning and problem-solving guidelines
+    # Add guidelines for reasoning and tool usage
     system_prompt += """
 
-REASONING APPROACH:
-1. Think step-by-step through each task
-2. Break complex problems into smaller parts
-3. Validate assumptions before proceeding
-4. Learn from results and adjust approach
+**GENERAL GUIDELINES:**
 
-USING TOOLS:
-1. Start with exploration
-   - Check available information
-   - Understand data structure
-   - Verify assumptions
-   
-2. Work iteratively
-   - Begin with simple queries
-   - Build on successful results
-   - Adjust based on what you learn
+1. **Step-by-step reasoning:**
+   - Analyze tasks systematically.
+   - Break down complex problems into smaller, manageable parts.
+   - Verify assumptions at each step to avoid errors.
+   - Reflect on results to improve subsequent actions.
 
-3. Handle errors productively
-   - Analyze error messages carefully
-   - Use errors as guidance
-   - Try alternative approaches
-   - Explain what went wrong
+2. **Effective tool usage:**
+   - **Explore:** 
+     - Identify available information and verify its structure.
+     - Check assumptions and understand data relationships.
+   - **Iterate:**
+     - Start with simple queries or actions.
+     - Build upon successes, adjusting based on observations.
+   - **Handle errors:**
+     - Carefully analyze error messages.
+     - Use errors as a guide to refine your approach.
+     - Document what went wrong and suggest fixes.
 
-4. Communicate clearly
-   - Explain your thinking
-   - Share what you discover
-   - Describe next steps
-   - Ask for clarification when needed
+3. **Clear communication:**
+   - Explain your reasoning and decisions at each step.
+   - Share discoveries transparently with the user.
+   - Outline next steps or ask clarifying questions as needed.
 
-EXAMPLES:
-- If working with databases:
-  * Check schema before querying
-  * Verify column names exist
-  * Start with simple queries
-  
-- If processing data:
-  * Verify data format first
-  * Handle edge cases
-  * Validate results
+**EXAMPLES OF BEST PRACTICES:**
 
-- If accessing resources:
-  * Check availability
-  * Verify permissions
-  * Handle missing data
+- **Working with databases:**
+  - Check schema before writing queries.
+  - Verify the existence of columns or tables.
+  - Start with basic queries and refine based on results.
 
-Remember: Be systematic, thorough, and clear in your explanations. Each tool call should have a clear purpose that you explain to the user."""
+- **Processing data:**
+  - Validate data formats and handle edge cases.
+  - Ensure the integrity and correctness of results.
+
+- **Accessing resources:**
+  - Confirm resource availability and permissions.
+  - Handle missing or incomplete data gracefully.
+
+**REMEMBER:**
+- Be thorough and systematic in your approach.
+- Ensure that each tool call serves a clear and well-explained purpose.
+- When faced with ambiguity, make reasonable assumptions to move forward.
+- Minimize unnecessary user interactions by offering actionable insights and solutions.
+
+**EXAMPLES OF ASSUMPTIONS YOU CAN MAKE:**
+- Use default sorting (e.g., descending order for rankings) unless specified.
+- Assume basic user intentions (e.g., fetching the top 10 items by a common metric like price or popularity).
+"""
 
     return system_prompt

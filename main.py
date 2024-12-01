@@ -18,7 +18,7 @@ DEFAULT_CONFIG_FILE = "server_config.json"
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.CRITICAL,
     format='%(asctime)s - %(levelname)s - %(message)s',
     stream=sys.stderr
 )
@@ -67,8 +67,12 @@ async def handle_command(command: str, read_stream, write_stream):
             prompts = await send_prompts_list(read_stream, write_stream)
             print("Prompts List:", prompts)
         elif command == "chat":
-            # set the provider
+            # Retrieve provider and model from environment variables
             provider = os.getenv("LLM_PROVIDER", "openai")
+            model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    
+            # Announce provider and model in use
+            print(f"\nEntering chat mode using provider '{provider}' and model '{model}'...")
 
             # handle chat mode
             await handle_chat_mode(read_stream, write_stream, provider)
@@ -173,19 +177,21 @@ if __name__ == "__main__":
     # Argument parser setup
     parser = argparse.ArgumentParser(description="MCP Command-Line Tool")
 
-    # get the config file
+    # Configuration file argument
     parser.add_argument(
         "--config-file",
         default=DEFAULT_CONFIG_FILE,
         help="Path to the JSON configuration file containing server details.",
     )
 
+    # Server configuration argument
     parser.add_argument(
         "--server",
         required=True,
         help="Name of the server configuration to use from the config file.",
     )
 
+    # Command argument (optional)
     parser.add_argument(
         "command",
         nargs="?",
@@ -193,15 +199,38 @@ if __name__ == "__main__":
         help="Command to execute (optional - if not provided, enters interactive mode).",
     )
 
-    # parse arguments
+    # Provider argument
+    parser.add_argument(
+        "--provider",
+        choices=["openai", "ollama"],
+        default="openai",
+        help="LLM provider to use. Defaults to 'openai'.",
+    )
+
+    # Model argument
+    parser.add_argument(
+        "--model",
+        help=(
+            "Model to use. Defaults to 'gpt-4o-mini' for 'openai' and 'llama3.2' for 'ollama'."
+        ),
+    )
+
+    # Parse arguments
     args = parser.parse_args()
 
+    # Determine the model based on the provider and user input
+    model = args.model or ("gpt-4o-mini" if args.provider == "openai" else "qwen2.5-coder")
+
+    # Set environment variables for provider and model
+    os.environ["LLM_PROVIDER"] = args.provider
+    os.environ["LLM_MODEL"] = model
+
     try:
-        # run
+        # Run the main function
         anyio.run(main, args.config_file, args.server, args.command)
     except KeyboardInterrupt:
-        # exit
+        # Exit on keyboard interrupt
         os._exit(0)
-    except Exception:
-        # exit
+    except Exception as e:
+        print(f"Error occurred: {e}")
         os._exit(1)
