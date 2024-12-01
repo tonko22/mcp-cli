@@ -5,7 +5,7 @@
         "args": [
           "mcp-server-sqlite",
           "--db-path",
-          "/Users/christopherhay/chris-source/mcp-play/hello-sqlite/test.db"
+          "test.db"
         ]
       }
     }
