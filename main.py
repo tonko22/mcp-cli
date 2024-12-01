@@ -10,6 +10,7 @@ from messages.resources import send_resources_list
 from messages.prompts import send_prompts_list
 from messages.send_initialize_message import send_initialize
 from messages.send_ping_message import send_ping
+from chat_handler import handle_chat_mode
 from stdio_client import stdio_client, get_default_environment
 from stdio_server_shutdown import shutdown_stdio_server
 
@@ -35,6 +36,8 @@ async def handle_command(command: str, read_stream, write_stream):
             print("\nFetching Prompts List...")
             prompts = await send_prompts_list(read_stream, write_stream)
             print("Prompts List:", prompts)
+        elif command == "chat":
+            await handle_chat_mode(read_stream, write_stream)
         elif command in ["quit", "exit"]:
             print("\nGoodbye!")
             return False
@@ -49,6 +52,7 @@ async def handle_command(command: str, read_stream, write_stream):
             print("  list-tools    - Display available tools")
             print("  list-resources- Display available resources")
             print("  list-prompts  - Display available prompts")
+            print("  chat          - Enter chat mode")
             print("  clear         - Clear the screen")
             print("  help          - Show this help message")
             print("  quit/exit     - Exit the program")
@@ -59,6 +63,7 @@ async def handle_command(command: str, read_stream, write_stream):
         print(f"\nError executing command: {e}")
     
     return True
+
 
 async def get_input():
     """Get input asynchronously."""
