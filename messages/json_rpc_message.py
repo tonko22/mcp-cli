@@ -1,4 +1,4 @@
-# json_rpc_message.py
+# messages/json_rpc_message.py
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Optional
 

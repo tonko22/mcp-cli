@@ -1,3 +1,4 @@
+# transport/stdio/stdio_client.py
 import sys
 import json
 import logging
@@ -6,19 +7,24 @@ from anyio.streams.text import TextReceiveStream
 from contextlib import asynccontextmanager
 from environment import get_default_environment
 from messages.json_rpc_message import JSONRPCMessage
-from stdio_server_parameters import StdioServerParameters
+from transport.stdio.stdio_server_parameters import StdioServerParameters
 import traceback
 
 @asynccontextmanager
 async def stdio_client(server: StdioServerParameters):
+    # ensure we have a server command
     if not server.command:
         raise ValueError("Server command must not be empty.")
+    
+    # ensure we have server arguments as a list or tuple
     if not isinstance(server.args, (list, tuple)):
         raise ValueError("Server arguments must be a list or tuple.")
-
+    
+    # create the the read and write streams
     read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
     write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
+    # start the subprocess
     process = await anyio.open_process(
         [server.command, *server.args],
         env=server.env or get_default_environment(),
@@ -26,17 +32,26 @@ async def stdio_client(server: StdioServerParameters):
     )
     logging.info(f"Subprocess started with PID {process.pid}, command: {server.command}")
 
+    # create a task to read from the subprocess' stdout
     async def process_json_line(line: str, writer):
         try:
             logging.debug(f"Processing line: {line.strip()}")
             data = json.loads(line)
+
+            # parse the json
             logging.debug(f"Parsed JSON data: {data}")
+
+            # validate the jsonrpc message
             message = JSONRPCMessage.model_validate(data)
             logging.debug(f"Validated JSONRPCMessage: {message}")
+
+            # send the message
             await writer.send(message)
         except json.JSONDecodeError as exc:
+            # not valid json
             logging.error(f"JSON decode error: {exc}. Line: {line.strip()}")
         except Exception as exc:
+            # other exception
             logging.error(f"Error processing message: {exc}. Line: {line.strip()}")
             logging.debug(f"Traceback:\n{traceback.format_exc()}")
 
@@ -107,9 +122,12 @@ async def stdio_client(server: StdioServerParameters):
             tg.start_soon(stdout_reader)
             tg.start_soon(stdin_writer)
             yield read_stream, write_stream
+
+        # exit the task group
         exit_code = await process.wait()
         logging.info(f"Process exited with code {exit_code}")
     except Exception as exc:
+        # other exception
         logging.error(f"Unhandled error in TaskGroup: {exc}")
         logging.debug(f"Traceback:\n{traceback.format_exc()}")
         if hasattr(exc, '__cause__') and exc.__cause__:

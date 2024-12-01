@@ -5,17 +5,23 @@ import anyio
 import asyncio
 import os
 from config import load_config
-from messages.tools import call_tool, send_tools_list
+from messages.tools import send_call_tool, send_tools_list
 from messages.resources import send_resources_list
 from messages.prompts import send_prompts_list
 from messages.send_initialize_message import send_initialize
-from messages.send_ping_message import send_ping
+from messages.ping import send_ping
 from chat_handler import handle_chat_mode
-from stdio_client import stdio_client, get_default_environment
-from stdio_server_shutdown import shutdown_stdio_server
+from transport.stdio.stdio_client import stdio_client
 
 # Default path for the configuration file
 DEFAULT_CONFIG_FILE = "server_config.json"
+
+# Configure logging
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
 
 async def handle_command(command: str, read_stream, write_stream):
     """Handle specific commands dynamically."""
@@ -42,7 +48,7 @@ async def handle_command(command: str, read_stream, write_stream):
                 return True
 
             print(f"\nCalling tool '{tool_name}' with arguments: {arguments}")
-            result = await call_tool(tool_name, arguments, read_stream, write_stream)
+            result = await send_call_tool(tool_name, arguments, read_stream, write_stream)
             if result.get("isError"):
                 print(f"Error calling tool: {result.get('error')}")
             else:
@@ -154,6 +160,7 @@ if __name__ == "__main__":
     # Argument parser setup
     parser = argparse.ArgumentParser(description="MCP Command-Line Tool")
 
+    # get the config file
     parser.add_argument(
         "--config-file",
         default=DEFAULT_CONFIG_FILE,
@@ -174,13 +181,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
-    # Configure logging
-    logging.basicConfig(
-        level=logging.WARNING,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        stream=sys.stderr
-    )
 
     try:
         anyio.run(main, args.config_file, args.server, args.command)

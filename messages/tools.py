@@ -1,4 +1,4 @@
-# tools.py
+# messages/tools.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
 
@@ -15,7 +15,7 @@ async def send_tools_list(
     return response.get("result", [])
 
 
-async def call_tool(
+async def send_call_tool(
     tool_name: str,
     arguments: dict,
     read_stream: MemoryObjectReceiveStream,

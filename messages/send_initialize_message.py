@@ -1,3 +1,4 @@
+# messages/send_initialize_message.py
 import logging
 import anyio
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
@@ -54,6 +55,9 @@ async def send_initialize(
         method="initialize",
         params=init_params.model_dump(),
     )
+
+    # print the message
+    print(init_message)
 
     # sending
     logging.debug("Sending initialize request")

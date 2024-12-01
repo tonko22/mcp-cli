@@ -1,4 +1,4 @@
-# resources.py
+# messages/resources.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
 

@@ -1,7 +1,7 @@
 import json
 import re
 from typing import Optional, Dict, Any
-from messages.tools import call_tool, send_tools_list
+from messages.tools import send_call_tool, send_tools_list
 
 def parse_tool_response(response: str) -> Optional[Dict[str, Any]]:
     """Parse tool call from Llama's XML-style format."""
@@ -46,7 +46,7 @@ async def handle_tool_call(tool_call, conversation_history, read_stream, write_s
     print(f"\nTool '{tool_name}' invoked with arguments: {tool_args}")
 
     # Execute the tool
-    tool_response = await call_tool(tool_name, tool_args, read_stream, write_stream)
+    tool_response = await send_call_tool(tool_name, tool_args, read_stream, write_stream)
     if tool_response.get("isError"):
         print(f"Error calling tool: {tool_response.get('error')}")
         return

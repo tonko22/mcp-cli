@@ -1,4 +1,4 @@
-# prompts.py
+# messages/prompts.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
 

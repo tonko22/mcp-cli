@@ -1,4 +1,4 @@
-# send_ping_message.py
+# messages/ping.py
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from messages.send_message import send_message
 

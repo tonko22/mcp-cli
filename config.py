@@ -1,15 +1,7 @@
 # config.py
 import json
-import sys
 import logging
-from stdio_server_parameters import StdioServerParameters
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stderr)],
-)
+from transport.stdio.stdio_server_parameters import StdioServerParameters
 
 async def load_config(config_path: str, server_name: str) -> StdioServerParameters:
     """ Load the server configuration from a JSON file. """

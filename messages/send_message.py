@@ -1,4 +1,4 @@
-# send_message.py
+# messages/send_message.py
 import logging
 import anyio
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
