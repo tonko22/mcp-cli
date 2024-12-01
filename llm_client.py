@@ -1,6 +1,5 @@
-# llm_client.py
 import os
-import json
+import uuid
 import ollama
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -39,12 +38,11 @@ class LLMClient:
 
     def _openai_completion(self, messages: List[Dict], tools: List) -> Dict[str, Any]:
         """Handle OpenAI chat completions."""
-
         # get the openai client
         client = OpenAI(api_key=self.api_key)
 
         try:
-            # make a request, passing in tools
+            # make a request, passing in tools
             response = client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -57,7 +55,7 @@ class LLMClient:
                 "tool_calls": getattr(response.choices[0].message, "tool_calls", []),
             }
         except Exception as e:
-            # error
+            # error
             logging.error(f"OpenAI API Error: {str(e)}")
             raise ValueError(f"OpenAI API Error: {str(e)}")
 
@@ -69,24 +67,10 @@ class LLMClient:
             for msg in messages
         ]
 
-        # Format tools for Ollama
-        ollama_tools = []
-        if tools:
-            for tool in tools:
-                if isinstance(tool, dict):
-                    if "function" in tool:
-                        # Convert OpenAI format to Ollama format
-                        tool_config = {
-                            "name": tool["function"]["name"],
-                            "description": tool["function"].get("description", ""),
-                            "parameters": tool["function"].get("parameters", {})
-                        }
-                        ollama_tools.append(tool_config)
-
         try:
-            # Make API call
+            # Make API call with tools
             response = ollama.chat(
-                model="llama3.2",
+                model="qwen2.5-coder",
                 messages=ollama_messages,
                 stream=False,
                 tools=tools or []
@@ -94,22 +78,26 @@ class LLMClient:
 
             logging.info(f"Ollama raw response: {response}")
 
-            # get the message
-            message = getattr(response, "message", None)
+            # Extract the message and tool calls
+            message = response.message
+            tool_calls = []
 
-            # get the tool calls
-            tool_calls = getattr(response, "tool_calls", [])
+            # Convert Ollama tool calls to OpenAI format
+            if hasattr(message, 'tool_calls') and message.tool_calls:
+                for tool in message.tool_calls:
+                    tool_calls.append({
+                        "id": str(uuid.uuid4()),  # Generate unique ID
+                        "type": "function",
+                        "function": {
+                            "name": tool.function.name,
+                            "arguments": tool.function.arguments
+                        }
+                    })
 
-            # check for a message
-            if message:
-                return {"response": message.content, "tool_calls": tool_calls}
-            elif hasattr(response, "error"):
-                # error
-                logging.error(f"Ollama API Error: {response.error}")
-                raise ValueError(f"Ollama API Error: {response.error}")
-            else:
-                # no response
-                return {"response": "No response", "tool_calls": []}
+            return {
+                "response": message.content if message else "No response",
+                "tool_calls": tool_calls
+            }
 
         except Exception as e:
             # error

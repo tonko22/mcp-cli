@@ -18,55 +18,74 @@ def parse_tool_response(response: str) -> Optional[Dict[str, Any]]:
                 "arguments": args,
             }
         except json.JSONDecodeError as error:
-            # json decode error
             logging.debug(f"Error parsing function arguments: {error}")
     return None
 
 async def handle_tool_call(tool_call, conversation_history, read_stream, write_stream):
     """Handle a single tool call for both OpenAI and Llama formats."""
-    # Handle direct OpenAI-style tool calls
-    if hasattr(tool_call, 'function'):
-        tool_name = tool_call.function.name
-        raw_arguments = tool_call.function.arguments
-    else:
-        # Parse Llama's XML format from the last message
-        last_message = conversation_history[-1]["content"]
-        parsed_tool = parse_tool_response(last_message)
-        if not parsed_tool:
-            # unable to parse
-            logging.debug("Unable to parse tool call from message")
-            return
-        
-        # get the tool name and arguments
-        tool_name = parsed_tool["function"]
-        raw_arguments = parsed_tool["arguments"]
-
     try:
+        # Handle object-style tool calls from both OpenAI and Ollama
+        if hasattr(tool_call, 'function') or (isinstance(tool_call, dict) and 'function' in tool_call):
+            # Get tool name and arguments based on format
+            if hasattr(tool_call, 'function'):
+                tool_name = tool_call.function.name
+                raw_arguments = tool_call.function.arguments
+            else:
+                tool_name = tool_call['function']['name']
+                raw_arguments = tool_call['function']['arguments']
+        else:
+            # Parse Llama's XML format from the last message
+            last_message = conversation_history[-1]["content"]
+            parsed_tool = parse_tool_response(last_message)
+            if not parsed_tool:
+                logging.debug("Unable to parse tool call from message")
+                return
+            
+            tool_name = parsed_tool["function"]
+            raw_arguments = parsed_tool["arguments"]
+
         # Parse the tool arguments
         tool_args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
+        
+        # print the tool invocation
+        print(f"\nTool: '{tool_name}' invoked with arguments: {tool_args}")
+
+        # execute the tool
+        tool_response = await send_call_tool(tool_name, tool_args, read_stream, write_stream)
+        if tool_response.get("isError"):
+            logging.debug(f"Error calling tool: {tool_response.get('error')}")
+            return
+
+        # Format and display the response
+        formatted_response = format_tool_response(tool_response.get("content", []))
+        logging.debug(f"Tool '{tool_name}' Response: {formatted_response}")  # Fixed logging line
+
+        # Add the tool call to conversation history (required for OpenAI)
+        conversation_history.append({
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{
+                "id": f"call_{tool_name}",
+                "type": "function",
+                "function": {
+                    "name": tool_name,
+                    "arguments": json.dumps(tool_args) if isinstance(tool_args, dict) else tool_args
+                }
+            }]
+        })
+
+        # Add the tool response to conversation history
+        conversation_history.append({
+            "role": "tool",
+            "name": tool_name,
+            "content": formatted_response,
+            "tool_call_id": f"call_{tool_name}"
+        })
+
     except json.JSONDecodeError:
-        # json error
         logging.debug(f"Error decoding arguments for tool '{tool_name}': {raw_arguments}")
-        return
-    
-    # print the tool invocation
-    print(f"\nTool: '{tool_name}' invoked with arguments: {tool_args}")
-
-    # execute the tool
-    tool_response = await send_call_tool(tool_name, tool_args, read_stream, write_stream)
-    if tool_response.get("isError"):
-        # error
-        logging.debug(f"Error calling tool: {tool_response.get('error')}")
-        return
-
-    # Format and display the response
-    formatted_response = format_tool_response(tool_response.get("content", []))
-    logging.debug(f"Tool '{tool_name}' Response:", formatted_response)
-
-    # Add the tool response to the conversation history
-    conversation_history.append(
-        {"role": "assistant", "content": f"Tool '{tool_name}' Response: {formatted_response}"}
-    )
+    except Exception as e:
+        logging.debug(f"Error handling tool call: {str(e)}")
 
 def format_tool_response(response_content):
     """Format the response content from a tool."""
