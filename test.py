@@ -9,7 +9,7 @@ from transport.stdio.stdio_client import stdio_client
 
 # Configure logging
 logging.basicConfig(
-    level=logging.CRITICAL,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     stream=sys.stderr
 )

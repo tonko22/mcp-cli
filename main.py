@@ -27,14 +27,17 @@ async def handle_command(command: str, read_stream, write_stream):
     """Handle specific commands dynamically."""
     try:
         if command == "ping":
+            # ping server
             print("\nPinging Server...")
             result = await send_ping(read_stream, write_stream)
             print("Server is up and running" if result else "Server ping failed")
         elif command == "list-tools":
+            # list tools
             print("\nFetching Tools List...")
             tools = await send_tools_list(read_stream, write_stream)
             print("Tools List:", tools)
         elif command == "call-tool":
+            # call tool
             tool_name = input("Enter tool name: ").strip()
             if not tool_name:
                 print("Tool name cannot be empty.")
@@ -54,26 +57,34 @@ async def handle_command(command: str, read_stream, write_stream):
             else:
                 print("Tool Response:", result.get("content"))
         elif command == "list-resources":
+            # list resources
             print("\nFetching Resources List...")
             resources = await send_resources_list(read_stream, write_stream)
             print("Resources List:", resources)
         elif command == "list-prompts":
+            # list prompts
             print("\nFetching Prompts List...")
             prompts = await send_prompts_list(read_stream, write_stream)
             print("Prompts List:", prompts)
         elif command == "chat":
             # set the provider
             provider = os.getenv("LLM_PROVIDER", "openai")
+
+            # handle chat mode
             await handle_chat_mode(read_stream, write_stream, provider)
         elif command in ["quit", "exit"]:
+            # exit
             print("\nGoodbye!")
             return False
         elif command == "clear":
             if sys.platform == "win32":
+                # clear
                 os.system("cls")
             else:
+                # clear
                 os.system("clear")
         elif command == "help":
+            # help commands
             print("\nAvailable commands:")
             print("  ping          - Check if server is responsive")
             print("  list-tools    - Display available tools")
@@ -149,8 +160,10 @@ async def main(config_path: str, server_name: str, command: str = None) -> None:
             loop.stop()
 
     except KeyboardInterrupt:
+        # exiting gracefully on keyboard interrupt
         print("\nGoodbye!")
     except Exception as e:
+        # Handle any other exceptions
         print(f"Error in main: {e}")
     finally:
         # Ensure we exit the process
@@ -180,11 +193,15 @@ if __name__ == "__main__":
         help="Command to execute (optional - if not provided, enters interactive mode).",
     )
 
+    # parse arguments
     args = parser.parse_args()
 
     try:
+        # run
         anyio.run(main, args.config_file, args.server, args.command)
     except KeyboardInterrupt:
+        # exit
         os._exit(0)
     except Exception:
+        # exit
         os._exit(1)
