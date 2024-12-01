@@ -57,7 +57,7 @@ async def send_initialize(
     )
 
     # print the message
-    print(init_message)
+    logging.debug("sending message: {init_message}")
 
     # sending
     logging.debug("Sending initialize request")

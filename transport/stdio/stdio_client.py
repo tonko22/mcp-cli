@@ -30,7 +30,9 @@ async def stdio_client(server: StdioServerParameters):
         env=server.env or get_default_environment(),
         stderr=sys.stderr,
     )
-    logging.info(f"Subprocess started with PID {process.pid}, command: {server.command}")
+
+    # started server
+    logging.debug(f"Subprocess started with PID {process.pid}, command: {server.command}")
 
     # create a task to read from the subprocess' stdout
     async def process_json_line(line: str, writer):
