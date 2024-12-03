@@ -86,4 +86,4 @@ If you wish to use openai models, you should
 Contributions are welcome! Please open an issue or submit a pull request with your proposed changes.
 
 ## License
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](license.md).
