@@ -10,8 +10,7 @@ This repository contains a protocol-level CLI designed to interact with a Model 
 
 ## Prerequisites
 - Python 3.8 or higher.
-- Required dependencies (see [Installation](#installation)).
-- uv (install using `brew install uvx`).
+- Required dependencies (see [Installation](#installation))
 
 ## Installation
 1. Clone the repository:
@@ -24,7 +23,13 @@ cd mcp-cli
 2. Install UV:
 
 ```bash
-- pip install uv
+pip install uv
+```
+
+3. Resynchronize dependencies:
+
+```bash
+uv sync --reinstall
 ```
 
 ## Usage
