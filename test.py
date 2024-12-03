@@ -36,9 +36,9 @@ async def main():
         # connected
         print(f"We're connected!!!")
 
-        # # Send a ping
-        # result = await send_ping(read_stream, write_stream)
-        # print("Ping successful" if result else "Ping failed")
+        # Send a ping
+        result = await send_ping(read_stream, write_stream)
+        print("Ping successful" if result else "Ping failed")
 
         # # get tools
         # result = await send_tools_list(read_stream, write_stream)

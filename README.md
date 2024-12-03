@@ -16,17 +16,23 @@ This repository contains a protocol-level CLI designed to interact with a Model 
 ## Installation
 1. Clone the repository:
 
+```bash
 git clone https://github.com/chrishayuk/mcp-cli
 cd mcp-cli
+```
 
-2. Install dependencies:
+2. Install UV:
 
-pip install -r requirements.txt
+```bash
+- pip install uv
+```
 
 ## Usage
 To start the client and interact with the SQLite server, run the following command:
 
+```bash
 uv run main.py --server sqlite
+```
 
 ### Command-line Arguments
 - `--server`: Specifies the server configuration to use. Required.
@@ -39,11 +45,15 @@ uv run main.py --server sqlite
 ### Examples
 Run the client with the default OpenAI provider and model:
 
+```bash
 uv run main.py --server sqlite
+```
 
 Run the client with a specific configuration and Ollama provider:
 
+```bash
 uv run main.py --server sqlite --provider ollama --model llama3.2
+```
 
 ## Interactive Mode
 The client supports interactive mode, allowing you to execute commands dynamically. Type `help` for a list of available commands or `quit` to exit the program.
@@ -66,6 +76,11 @@ uv run main.py --server sqlite
 In chat mode, you can use tools and query the server interactively. The provider and model used are specified during startup and displayed as follows:
 
 Entering chat mode using provider 'ollama' and model 'llama3.2'...
+
+#### Using OpenAI Provider:
+If you wish to use openai models, you should
+
+- set the `OPENAI_API_KEY` environment variable before running the client, either in .env or as an environment variable.
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request with your proposed changes.
