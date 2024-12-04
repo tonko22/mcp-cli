@@ -3,7 +3,7 @@ from llm_client import LLMClient
 from tools_handler import handle_tool_call, convert_to_openai_tools, fetch_tools, parse_tool_response
 from system_prompt_generator import SystemPromptGenerator
 
-async def handle_chat_mode(read_stream, write_stream, provider="openai"):
+async def handle_chat_mode(read_stream, write_stream, provider="openai",model="gpt-4o-mini"):
     """Enter chat mode with multi-call support for autonomous tool chaining."""
     try:
         # fetch tools dynamically
@@ -20,7 +20,7 @@ async def handle_chat_mode(read_stream, write_stream, provider="openai"):
         openai_tools = convert_to_openai_tools(tools)
 
         # Initialize the LLM client
-        client = LLMClient(provider=provider)
+        client = LLMClient(provider=provider,model=model)
 
         # setup the conversation history
         conversation_history = [{"role": "system", "content": system_prompt}]

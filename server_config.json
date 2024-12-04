@@ -5,7 +5,7 @@
         "args": [
           "mcp-server-sqlite",
           "--db-path",
-          "test.db"
+          "C:\\Users\\adi\\Desktop\\ClaudeDbTest\\test.db"
         ]
       }
     }

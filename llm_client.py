@@ -70,7 +70,7 @@ class LLMClient:
         try:
             # Make API call with tools
             response = ollama.chat(
-                model="qwen2.5-coder",
+                model=self.model,
                 messages=ollama_messages,
                 stream=False,
                 tools=tools or []
