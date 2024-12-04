@@ -75,7 +75,7 @@ async def handle_command(command: str, read_stream, write_stream):
             print(f"\nEntering chat mode using provider '{provider}' and model '{model}'...")
 
             # handle chat mode
-            await handle_chat_mode(read_stream, write_stream, provider)
+            await handle_chat_mode(read_stream, write_stream, provider,model)
         elif command in ["quit", "exit"]:
             # exit
             print("\nGoodbye!")
@@ -223,7 +223,7 @@ if __name__ == "__main__":
 
     # Set environment variables for provider and model
     os.environ["LLM_PROVIDER"] = args.provider
-    os.environ["LLM_MODEL"] = model
+    os.environ["LLM_MODEL"] = model  
 
     try:
         # Run the main function
