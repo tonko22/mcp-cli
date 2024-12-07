@@ -1,57 +1,52 @@
 # chat_handler.py
 from llm_client import LLMClient
-from tools_handler import handle_tool_call, convert_to_openai_tools, fetch_tools, parse_tool_response
+from tools_handler import handle_tool_call, convert_to_openai_tools, fetch_tools
 from system_prompt_generator import SystemPromptGenerator
 
-async def handle_chat_mode(read_stream, write_stream, provider="openai",model="gpt-4o-mini"):
+from rich import print
+from rich.panel import Panel
+from rich.markdown import Markdown
+from rich.prompt import Prompt
+import json
+
+async def handle_chat_mode(read_stream, write_stream, provider="openai", model="gpt-4o-mini"):
     """Enter chat mode with multi-call support for autonomous tool chaining."""
     try:
-        # fetch tools dynamically
         tools = await fetch_tools(read_stream, write_stream)
-
         if not tools:
-            print("No tools available. Exiting chat mode.")
+            print("[red]No tools available. Exiting chat mode.[/red]")
             return
 
-        # generate system prompt
         system_prompt = generate_system_prompt(tools)
-
-        # convert tools to OpenAI format
         openai_tools = convert_to_openai_tools(tools)
-
-        # Initialize the LLM client
-        client = LLMClient(provider=provider,model=model)
-
-        # setup the conversation history
+        client = LLMClient(provider=provider, model=model)
         conversation_history = [{"role": "system", "content": system_prompt}]
 
-        # entering chat mode
-        print("\nEntering chat mode. Type 'exit' to quit.")
         while True:
             try:
-                user_message = input("\nYou: ").strip()
+                # Change prompt to yellow
+                user_message = Prompt.ask("[bold yellow]>[/bold yellow]").strip()
                 if user_message.lower() in ["exit", "quit"]:
-                    print("Exiting chat mode.")
+                    print(Panel("Exiting chat mode.", style="bold red"))
                     break
 
-                # add user message to history
-                conversation_history.append({"role": "user", "content": user_message})
+                # User panel in bold yellow
+                user_panel_text = user_message if user_message else "[No Message]"
+                print(Panel(user_panel_text, style="bold yellow", title="You"))
 
-                # Process conversation
+                conversation_history.append({"role": "user", "content": user_message})
                 await process_conversation(client, conversation_history, openai_tools, read_stream, write_stream)
 
             except Exception as e:
-                print(f"\nError processing message: {e}")
+                print(f"[red]Error processing message:[/red] {e}")
                 continue
-
     except Exception as e:
-        print(f"\nError in chat mode: {e}")
+        print(f"[red]Error in chat mode:[/red] {e}")
 
 
 async def process_conversation(client, conversation_history, openai_tools, read_stream, write_stream):
     """Process the conversation loop, handling tool calls and responses."""
     while True:
-        # Call the LLM client
         completion = client.create_completion(
             messages=conversation_history,
             tools=openai_tools,
@@ -60,88 +55,107 @@ async def process_conversation(client, conversation_history, openai_tools, read_
         response_content = completion.get("response", "No response")
         tool_calls = completion.get("tool_calls", [])
 
-        # If tool calls are present, process them
         if tool_calls:
-            # loop through tool calls
-            for tool_call in tool_calls:
-                await handle_tool_call(tool_call, conversation_history, read_stream, write_stream)
+          for tool_call in tool_calls:
+              # Extract tool_name and raw_arguments as before
+              if hasattr(tool_call, 'function'):
+                  tool_name = getattr(tool_call.function, 'name', 'unknown tool')
+                  raw_arguments = getattr(tool_call.function, 'arguments', {})
+              elif isinstance(tool_call, dict) and 'function' in tool_call:
+                  fn_info = tool_call['function']
+                  tool_name = fn_info.get('name', 'unknown tool')
+                  raw_arguments = fn_info.get('arguments', {})
+              else:
+                  tool_name = "unknown tool"
+                  raw_arguments = {}
 
-            # Continue the loop to handle follow-up responses
-            continue  
+              # If raw_arguments is a string, try to parse it as JSON
+              if isinstance(raw_arguments, str):
+                  try:
+                      raw_arguments = json.loads(raw_arguments)
+                  except json.JSONDecodeError:
+                      # If it's not valid JSON, just display as is
+                      pass
 
-        # Otherwise, process as a regular assistant response
-        print("Assistant:", response_content)
+              # Now raw_arguments should be a dict or something we can pretty-print as JSON
+              tool_args_str = json.dumps(raw_arguments, indent=2)
+
+              tool_md = f"**Tool Call:** {tool_name}\n\n```json\n{tool_args_str}\n```"
+              print(Panel(Markdown(tool_md), style="bold magenta", title="Tool Invocation"))
+
+              await handle_tool_call(tool_call, conversation_history, read_stream, write_stream)
+          continue
+
+
+        # Assistant panel with Markdown
+        assistant_panel_text = response_content if response_content else "[No Response]"
+        print(Panel(Markdown(assistant_panel_text), style="bold blue", title="Assistant"))
         conversation_history.append({"role": "assistant", "content": response_content})
         break
-        
+
+
+
+
 def generate_system_prompt(tools):
     """
     Generate a concise system prompt for the assistant.
 
-    Args:
-        tools (list): A list of tools available for the assistant.
-
-    Returns:
-        str: A short and action-oriented system prompt.
+    This prompt is internal and not displayed to the user.
     """
     prompt_generator = SystemPromptGenerator()
     tools_json = {"tools": tools}
 
-    # Generate base prompt for tools
     system_prompt = prompt_generator.generate_prompt(tools_json)
-
-    # Add concise, tool-focused guidelines
     system_prompt += """
 
 **GENERAL GUIDELINES:**
 
-1. **Step-by-step reasoning:**
+1. Step-by-step reasoning:
    - Analyze tasks systematically.
    - Break down complex problems into smaller, manageable parts.
    - Verify assumptions at each step to avoid errors.
    - Reflect on results to improve subsequent actions.
 
-2. **Effective tool usage:**
-   - **Explore:** 
+2. Effective tool usage:
+   - Explore:
      - Identify available information and verify its structure.
      - Check assumptions and understand data relationships.
-   - **Iterate:**
+   - Iterate:
      - Start with simple queries or actions.
      - Build upon successes, adjusting based on observations.
-   - **Handle errors:**
+   - Handle errors:
      - Carefully analyze error messages.
      - Use errors as a guide to refine your approach.
      - Document what went wrong and suggest fixes.
 
-3. **Clear communication:**
+3. Clear communication:
    - Explain your reasoning and decisions at each step.
    - Share discoveries transparently with the user.
    - Outline next steps or ask clarifying questions as needed.
 
-**EXAMPLES OF BEST PRACTICES:**
+EXAMPLES OF BEST PRACTICES:
 
-- **Working with databases:**
+- Working with databases:
   - Check schema before writing queries.
   - Verify the existence of columns or tables.
   - Start with basic queries and refine based on results.
 
-- **Processing data:**
+- Processing data:
   - Validate data formats and handle edge cases.
-  - Ensure the integrity and correctness of results.
+  - Ensure integrity and correctness of results.
 
-- **Accessing resources:**
+- Accessing resources:
   - Confirm resource availability and permissions.
   - Handle missing or incomplete data gracefully.
 
-**REMEMBER:**
-- Be thorough and systematic in your approach.
-- Ensure that each tool call serves a clear and well-explained purpose.
-- When faced with ambiguity, make reasonable assumptions to move forward.
-- Minimize unnecessary user interactions by offering actionable insights and solutions.
+REMEMBER:
+- Be thorough and systematic.
+- Each tool call should have a clear and well-explained purpose.
+- Make reasonable assumptions if ambiguous.
+- Minimize unnecessary user interactions by providing actionable insights.
 
-**EXAMPLES OF ASSUMPTIONS YOU CAN MAKE:**
-- Use default sorting (e.g., descending order for rankings) unless specified.
-- Assume basic user intentions (e.g., fetching the top 10 items by a common metric like price or popularity).
+EXAMPLES OF ASSUMPTIONS:
+- Default sorting (e.g., descending order) if not specified.
+- Assume basic user intentions, such as fetching top results by a common metric.
 """
     return system_prompt
-
