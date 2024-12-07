@@ -22,7 +22,14 @@ def parse_tool_response(response: str) -> Optional[Dict[str, Any]]:
     return None
 
 async def handle_tool_call(tool_call, conversation_history, read_stream, write_stream):
-    """Handle a single tool call for both OpenAI and Llama formats."""
+    """
+    Handle a single tool call for both OpenAI and Llama formats.
+    This function no longer prints directly to stdout. It updates the conversation_history
+    with the tool call and its response. The calling function can then display the results.
+    """
+    tool_name = "unknown_tool"
+    raw_arguments = {}
+
     try:
         # Handle object-style tool calls from both OpenAI and Ollama
         if hasattr(tool_call, 'function') or (isinstance(tool_call, dict) and 'function' in tool_call):
@@ -47,20 +54,18 @@ async def handle_tool_call(tool_call, conversation_history, read_stream, write_s
         # Parse the tool arguments
         tool_args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
         
-        # print the tool invocation
-        print(f"\nTool: '{tool_name}' invoked with arguments: {tool_args}")
-
-        # execute the tool
+        # Call the tool (no direct print here)
         tool_response = await send_call_tool(tool_name, tool_args, read_stream, write_stream)
         if tool_response.get("isError"):
-            logging.debug(f"Error calling tool: {tool_response.get('error')}")
+            logging.debug(f"Error calling tool '{tool_name}': {tool_response.get('error')}")
             return
 
-        # Format and display the response
+        # Format the tool response
         formatted_response = format_tool_response(tool_response.get("content", []))
-        logging.debug(f"Tool '{tool_name}' Response: {formatted_response}")  # Fixed logging line
+        logging.debug(f"Tool '{tool_name}' Response: {formatted_response}")
 
-        # Add the tool call to conversation history (required for OpenAI)
+        # Update the conversation history with the tool call
+        # Add the tool call itself (for OpenAI tracking)
         conversation_history.append({
             "role": "assistant",
             "content": None,
@@ -85,7 +90,7 @@ async def handle_tool_call(tool_call, conversation_history, read_stream, write_s
     except json.JSONDecodeError:
         logging.debug(f"Error decoding arguments for tool '{tool_name}': {raw_arguments}")
     except Exception as e:
-        logging.debug(f"Error handling tool call: {str(e)}")
+        logging.debug(f"Error handling tool call '{tool_name}': {str(e)}")
 
 def format_tool_response(response_content):
     """Format the response content from a tool."""
@@ -93,8 +98,6 @@ def format_tool_response(response_content):
         return "\n".join(
             item.get("text", "No content") for item in response_content if item.get("type") == "text"
         )
-    
-    # return the formatted tool response
     return str(response_content)
 
 async def fetch_tools(read_stream, write_stream):
@@ -105,13 +108,11 @@ async def fetch_tools(read_stream, write_stream):
     tools_response = await send_tools_list(read_stream, write_stream)
     tools = tools_response.get("tools", [])
 
-    # check the tools are valid
+    # check if tools are valid
     if not isinstance(tools, list) or not all(isinstance(tool, dict) for tool in tools):
-        # invalid tools
         logging.debug("Invalid tools format received.")
         return None
     
-    # return the tools
     return tools
 
 def convert_to_openai_tools(tools):
