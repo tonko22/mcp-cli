@@ -11,6 +11,8 @@ This repository contains a protocol-level CLI designed to interact with a Model 
 ## Prerequisites
 - Python 3.8 or higher.
 - Required dependencies (see [Installation](#installation))
+- If using ollama you should have ollama installed and running.
+- If using openai you should have an api key set in your environment variables (OPENAI_API_KEY=yourkey)
 
 ## Installation
 1. Clone the repository:
