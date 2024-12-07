@@ -234,7 +234,12 @@ async def main(config_path: str, server_name: str, command: str = None) -> None:
             await interactive_mode(read_stream, write_stream)
 
         loop = asyncio.get_event_loop()
-        loop.stop()
+        
+        # Try closing streams with a timeout
+        with anyio.move_on_after(1):  # wait up to 1 second
+            await read_stream.aclose()
+            await write_stream.aclose()
+
 
 
 if __name__ == "__main__":
