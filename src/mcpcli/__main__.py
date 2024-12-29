@@ -288,6 +288,7 @@ async def run(config_path: str, server_names: List[str], command: str = None) ->
     context_managers = []
     for server_name in server_names:
         server_params = await load_config(config_path, server_name)
+        logging.info(f"Loaded server parameters for {server_name}: {server_params}")
 
         # Establish stdio communication for each server
         cm = stdio_client(server_params)
@@ -371,4 +372,3 @@ def cli_main():
 
 if __name__ == "__main__":
     cli_main()
-
