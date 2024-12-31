@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "git": {
-      "command": "python",
-      "args": ["/home/dev/projects/repsonal_tg_assistant/servers/src/git/src/mcp_server_git/server.py", "--repository", "/home/dev/projects/repsonal_tg_assistant/"]
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "/home/dev/projects/learning_async/"]
     }
   }
 }
