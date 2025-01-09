@@ -31,8 +31,8 @@ DEFAULT_CONFIG_FILE = "server_config.json"
 
 # Configure logging
 logging.basicConfig(
-    level=logging.CRITICAL,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     stream=sys.stderr,
 )
 
@@ -295,10 +295,13 @@ async def run(config_path: str, server_names: List[str], command: str = None) ->
         context_managers.append(cm)
         server_streams.append((read_stream, write_stream))
 
+        logging.info(f"Attempting to initialize server: {server_name}")
         init_result = await send_initialize(read_stream, write_stream)
         if not init_result:
+            logging.error(f"Server initialization failed for {server_name}. Init result: {init_result}")
             print(f"[red]Server initialization failed for {server_name}[/red]")
             return
+        logging.info(f"Server {server_name} initialized successfully")
 
     try:
         if command:
@@ -371,4 +374,3 @@ def cli_main():
 
 if __name__ == "__main__":
     cli_main()
-

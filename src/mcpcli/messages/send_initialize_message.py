@@ -31,25 +31,27 @@ async def send_initialize(
     init_message = InitializeMessage(init_params)
 
     # Sending
-    logging.debug("Sending initialize request")
+    logging.info("Sending initialize request with params: %s", init_params.model_dump())
     await write_stream.send(init_message)
 
     try:
-        # 5-second timeout for response
-        with anyio.fail_after(5):
+        # 15-second timeout for response
+        timeout = 15
+        logging.info(f"Waiting for server initialization response (timeout: {timeout}s)")
+        with anyio.fail_after(timeout):
             # Get the response from the server
             async for response in read_stream:
                 # If the response is an exception, log it and continue
                 if isinstance(response, Exception):
-                    logging.error(f"Error from server: {response}")
+                    logging.error("Error from server during initialization: %s", str(response), exc_info=True)
                     continue
 
                 # Debug log the received message
-                logging.debug(f"Received: {response.model_dump()}")
+                logging.debug("Received initialization response: %s", response.model_dump())
 
                 # Check for error
                 if response.error:
-                    logging.error(f"Server initialization error: {response.error}")
+                    logging.error("Server returned error during initialization: %s", response.error)
                     return None
 
                 # Check for result

@@ -128,9 +128,16 @@ async def stdio_client(server: StdioServerParameters):
 
     try:
         async with anyio.create_task_group() as tg, process:
-            tg.start_soon(stdout_reader)
-            tg.start_soon(stdin_writer)
-            yield read_stream, write_stream
+            reader_task = tg.start_soon(stdout_reader)
+            writer_task = tg.start_soon(stdin_writer)
+            try:
+                yield read_stream, write_stream
+            finally:
+                # Закрываем потоки перед выходом
+                await read_stream.aclose()
+                await write_stream.aclose()
+                # Отменяем задачи
+                tg.cancel_scope.cancel()
 
         # exit the task group
         exit_code = await process.wait()
