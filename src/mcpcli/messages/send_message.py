@@ -31,15 +31,31 @@ async def send_message(
     for attempt in range(1, retries + 1):
         try:
             logging.debug(f"Attempt {attempt}/{retries}: Sending message: {message}")
+            logging.debug(f"Message details - method: {message.method}, params: {message.params}")
             await write_stream.send(message)
 
             with anyio.fail_after(timeout):
                 async for response in read_stream:
                     if not isinstance(response, Exception):
-                        logging.debug(f"Received response: {response.model_dump()}")
-                        return response.model_dump()
+                        # Проверяем наличие ошибки в ответе
+                        if response.error is not None:
+                            error_msg = response.error.get("message", str(response.error))
+                            logging.error(f"JSON-RPC error: {error_msg}")
+                            raise ValueError(error_msg)
+                        
+                        # Если есть result, используем его
+                        if response.result is not None:
+                            logging.debug(f"Received result: {response.result}")
+                            return {"result": response.result}
+                            
+                        # Если нет result, но есть другие поля, возвращаем их
+                        response_data = response.model_dump(exclude_none=True)
+                        logging.debug(f"Received response: {response_data}")
+                        return response_data
                     else:
-                        logging.error(f"Server error: {response}")
+                        logging.error(f"Server error: {str(response)}")
+                        logging.error(f"Error type: {type(response)}")
+                        logging.error(f"Error details: {getattr(response, '__dict__', {})}")
                         raise response
 
         except TimeoutError:
@@ -50,8 +66,10 @@ async def send_message(
                 raise
         except Exception as e:
             logging.error(
-                f"Unexpected error during '{message.method}' request: {e} (Attempt {attempt}/{retries})"
+                f"Unexpected error during '{message.method}' request: {str(e)} (Attempt {attempt}/{retries})"
             )
+            logging.error(f"Error type: {type(e)}")
+            logging.error(f"Error details: {getattr(e, '__dict__', {})}")
             if attempt == retries:
                 raise
 

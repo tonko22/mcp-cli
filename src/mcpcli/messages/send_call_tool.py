@@ -20,7 +20,17 @@ async def send_call_tool(
             message=message,
         )
 
-        # get the result
-        return response.get("result", {})
+        if isinstance(response, dict):
+            if "error" in response:
+                return {"isError": True, "error": response["error"].get("message", str(response["error"]))}
+            
+            # Has result, return it
+            if "result" in response:
+                return {"isError": False, "content": response["result"]}
+            
+            # No result case, but has other fields
+            return {"isError": False, "content": response}
+        else:
+            return {"isError": True, "error": f"Invalid response type: {type(response)}"}
     except Exception as e:
         return {"isError": True, "error": str(e)}
