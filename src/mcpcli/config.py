@@ -8,9 +8,6 @@ from mcpcli.transport.stdio.stdio_server_parameters import StdioServerParameters
 async def load_config(config_path: str, server_name: str) -> StdioServerParameters:
     """Load the server configuration from a JSON file."""
     try:
-        # debug
-        logging.debug(f"Loading config from {config_path}")
-
         # Read the configuration file
         with open(config_path, "r") as config_file:
             config = json.load(config_file)
@@ -27,11 +24,6 @@ async def load_config(config_path: str, server_name: str) -> StdioServerParamete
             command=server_config["command"],
             args=server_config.get("args", []),
             env=server_config.get("env"),
-        )
-
-        # debug
-        logging.debug(
-            f"Loaded config: command='{result.command}', args={result.args}, env={result.env}"
         )
 
         # return result
